@@ -114,8 +114,8 @@ def atom():
 # Formatter
 ######################################################################
 
-COLUMN_LIMIT = 80
-INDENT = " " * 2
+SMALL_EXPRESSION_MAX_LENGTH = 80
+SPACES_PER_INDENT = 2
 
 def format_lisp(input: str) -> str:
     parser = paragraph()
@@ -139,7 +139,7 @@ def format_term(xs, level: int, first: bool) -> str:
     if isatom(xs):
         return xs
     ok, oneline = format_term_oneline(xs)
-    if ok and len(oneline) < COLUMN_LIMIT:  # Small terms on one line
+    if ok and len(oneline) < SMALL_EXPRESSION_MAX_LENGTH:  # Small terms on one line
         return oneline
     # Long expression, break lines and align subexpressions on the same level.
     s = "("
@@ -156,7 +156,7 @@ def format_term(xs, level: int, first: bool) -> str:
     first = True
     for line in s.splitlines(keepends=True):
         if not first:
-            indented += INDENT
+            indented += " " * SPACES_PER_INDENT
         indented += line
         first = False
     return indented
