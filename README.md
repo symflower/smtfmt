@@ -28,3 +28,7 @@ Small expressions are printed inline; longer expressions are broken up and align
 ## Tests
 
 Run `pytest smtfmt.py`.
+
+## Style
+
+Format with `black --pyi smtfmt.py`.

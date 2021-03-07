@@ -14,7 +14,7 @@ def regex(pat: str, func=lambda x: None):
     def f(s: str):
         m = re.compile(pat).match(s)
         if m:
-            return True, s[m.end(0):], func(s[:m.end(0)])
+            return True, s[m.end(0) :], func(s[: m.end(0)])
         else:
             return False, s, None
     return f
@@ -69,10 +69,10 @@ def oneOrMore(parser):
 # Expr      ::= Comment | SExpr | atom
 
 def lparen():
-    return regex(r'^\s*\(')
+    return regex(r"^\s*\(")
 
 def rparen():
-    return regex(r'^\s*\)')
+    return regex(r"^\s*\)")
 
 def paragraph():
     def f(s: str):
@@ -82,7 +82,7 @@ def paragraph():
 
 def comment():
     def f(s: str):
-        parser = regex(r'^\s*;.*', lambda x: [';', x.strip()[1:]])
+        parser = regex(r"^\s*;.*", lambda x: [";", x.strip()[1:]])
         return parser(s)
     return f
 
@@ -106,7 +106,7 @@ def atom():
     def f(s: str):
         quoted = regex(r'^\s*".*"', lambda x: x.strip())
         # identifier = all but whitespace and ( or )
-        id = regex(r'^\s*[^\s\(\)]+', lambda x: x.strip())
+        id = regex(r"^\s*[^\s\(\)]+", lambda x: x.strip())
         return choice(quoted, id)(s)
     return f
 
@@ -119,7 +119,7 @@ SPACES_PER_INDENT = 2
 
 def format_lisp(input: str) -> str:
     parser = paragraph()
-    paragraphs = re.split(r'\n{2,}', input)
+    paragraphs = re.split(r"\n{2,}", input)
     return "\n".join(format_terms(parser(p)[2]) for p in paragraphs if p.strip() != "")
 
 def format_terms(xs) -> str:
