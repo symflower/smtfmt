@@ -1,51 +1,136 @@
 #!/usr/bin/env python3
 
-from pyparsing import (
-    ZeroOrMore,
-    Group,
-    Optional,
-    restOfLine,
-    nestedExpr,
-    quotedString,
-    Forward,
-    ParseResults,
-)
-from typing import Tuple
 import re
-import sys
-from os.path import basename
+from typing import Tuple
+
+######################################################################
+# Generic parser builders
+######################################################################
+# Here, a parser is a function of the following form:
+# f(input: str) -> (success: bool, output: str, value)
+
+def regex(pat: str, func=lambda x: None):
+    def f(s: str):
+        m = re.compile(pat).match(s)
+        if m:
+            return True, s[m.end(0):], func(s[:m.end(0)])
+        else:
+            return False, s, None
+    return f
+
+def seq(*parsers):
+    def f(s: str):
+        cur_s = s
+        values = list()
+        for parser in parsers:
+            succ, cur_s, value = parser(cur_s)
+            if not succ:
+                return False, s, None
+            if value:
+                values.append(value)
+        return True, cur_s, values
+    return f
+
+def choice(*parsers):
+    def f(s: str):
+        cur_s = s
+        for parser in parsers:
+            succ, cur_s, value = parser(cur_s)
+            if succ:
+                return True, cur_s, value
+        return False, s, None
+    return f
+
+def zeroOrMore(parser):
+    def f(s: str):
+        cur_s = s
+        values = list()
+        while True:
+            succ, cur_s, value = parser(cur_s)
+            if not succ:
+                break
+            values.append(value)
+        return True, cur_s, values
+    return f
+
+def oneOrMore(parser):
+    def f(s: str):
+        if not parser(s)[0]:
+            return False, s, None
+        return zeroOrMore(parser)(s)
+    return f
+
+######################################################################
+# Specific parser builders
+######################################################################
+# Paragraph ::= (Comment | SExpr)+
+# SExpr     ::= '(' Expr* ')'
+# Expr      ::= Comment | SExpr | atom
+
+def lparen():
+    return regex(r'^\s*\(')
+
+def rparen():
+    return regex(r'^\s*\)')
+
+def paragraph():
+    def f(s: str):
+        parser = oneOrMore(choice(comment(), sexpr()))
+        return parser(s)
+    return f
+
+def comment():
+    def f(s: str):
+        parser = regex(r'^\s*;.*', lambda x: [';', x.strip()[1:]])
+        return parser(s)
+    return f
+
+def sexpr():
+    def f(s: str):
+        parser = seq(lparen(), zeroOrMore(expr()), rparen())
+        succ, cur_s, value = parser(s)
+        # Do not wrap Expr* value in another list
+        if succ and value:
+            return succ, cur_s, value[0]
+        return succ, cur_s, value
+    return f
+
+def expr():
+    def f(s: str):
+        parser = choice(comment(), sexpr(), atom())
+        return parser(s)
+    return f
+
+def atom():
+    def f(s: str):
+        quoted = regex(r'^\s*".*"', lambda x: x.strip())
+        # identifier = all but whitespace and ( or )
+        id = regex(r'^\s*[^\s\(\)]+', lambda x: x.strip())
+        return choice(quoted, id)(s)
+    return f
+
+######################################################################
+# Formatter & test (effectively copy-paste from @krobelus)
+######################################################################
 
 COLUMN_LIMIT = 80
 INDENT = " " * 2
 
-USAGE = f"""\
-usage: {basename(sys.argv[0])} < input.lisp
-
-Pretty-print a balanced set of parentheses.
-
-Short expressions (< {COLUMN_LIMIT} characters) are printed inline.
-Larger expressions are broken up in lines and aligned.
-"""
-
 def format_lisp(input: str) -> str:
-    parser = lisp_parser()
+    parser = paragraph()
     paragraphs = re.split(r'\n{2,}', input)
-    return "\n".join(format_terms(parser.parseString(p)) for p in paragraphs)
+    return "\n".join(format_terms(parser(p)[2]) for p in paragraphs)
 
-def lisp_parser() -> Forward:
-    comment = Group(";" + Optional(restOfLine))
-    return ZeroOrMore(nestedExpr(ignoreExpr=(quotedString | comment)) ^ comment)
-
-def format_terms(xs: ParseResults) -> str:
+def format_terms(xs) -> str:
     return "".join(format_term(x, 0, False) + "\n" for x in xs)
 
-def iscomment(xs: ParseResults) -> bool:
+def iscomment(xs) -> bool:
     return len(xs) == 2 and xs[0] == ";"
 
-def isatom(xs: ParseResults) -> bool:
+def isatom(xs) -> bool:
     return isinstance(xs, str)
 
-def format_term(xs: ParseResults, level: int, first: bool) -> str:
+def format_term(xs, level: int, first: bool) -> str:
     # Insert comments at the current indentation level.
     if iscomment(xs):
         return "".join(xs)
@@ -75,7 +160,7 @@ def format_term(xs: ParseResults, level: int, first: bool) -> str:
         first = False
     return indented
 
-def format_term_oneline(xs: ParseResults) -> Tuple[bool, str]:
+def format_term_oneline(xs) -> Tuple[bool, str]:
     if iscomment(xs):
         return False, ""
     if isatom(xs):
@@ -88,12 +173,6 @@ def format_term_oneline(xs: ParseResults) -> Tuple[bool, str]:
         terms += [s]
     return True, "(" + " ".join(terms) + ")"
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        print(USAGE)
-        sys.exit(1)
-    else:
-        print(format_lisp(sys.stdin.read()), end="")
 
 TESTDATA = (
     """
@@ -136,5 +215,5 @@ TESTDATA = (
     + "\n"
 )
 
-def test_format_lisp() -> None:
+if __name__ == "__main__":
     assert format_lisp(TESTDATA) == TESTDATA
