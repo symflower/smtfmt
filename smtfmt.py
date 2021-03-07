@@ -117,10 +117,21 @@ def atom():
 SMALL_EXPRESSION_MAX_LENGTH = 80
 SPACES_PER_INDENT = 2
 
+class FormattingException(Exception):
+    pass
+
 def format_lisp(input: str) -> str:
     parser = paragraph()
-    paragraphs = re.split(r"\n{2,}", input)
-    return "\n".join(format_terms(parser(p)[2]) for p in paragraphs if p.strip() != "")
+    in_paragraphs = re.split(r"\n{2,}", input)
+    out_paragraphs = []
+    for p in in_paragraphs:
+        if p.strip() == "":
+            continue
+        succ, leftover, terms = parser(p)
+        if not succ or (leftover and not leftover.isspace()) or terms is None:
+            raise FormattingException("smtfmt: error: not formatting, leftover: " + leftover.strip())
+        out_paragraphs += [format_terms(terms)]
+    return "\n".join(out_paragraphs)
 
 def format_terms(xs) -> str:
     return "".join(format_term(x, 0, False) + "\n" for x in xs)
@@ -174,8 +185,20 @@ def format_term_oneline(xs) -> Tuple[bool, str]:
         terms += [s]
     return True, "(" + " ".join(terms) + ")"
 
+def usage():
+    print("usage: smtfmt < input.smt")
+    sys.exit(1)
+
 if __name__ == "__main__":
-    print(format_lisp(sys.stdin.read()), end="")
+    if len(sys.argv) > 1:
+        usage()
+    input = sys.stdin.read()
+    try:
+        print(format_lisp(input), end="")
+    except FormattingException as e:
+        print(input)
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
 ######################################################################
 # Tests
@@ -227,3 +250,11 @@ def test_format_lisp():
 
 def test_trailing_paragraph():
     assert format_lisp("()\n\n") == "()\n"
+
+def test_format_invalid():
+    try:
+        format_lisp("(")
+    except FormattingException as e:
+        assert e.args == ("smtfmt: error: not formatting, leftover: (", )
+        return
+    assert False, "expect exception on invalid input"
