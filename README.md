@@ -24,3 +24,7 @@ $ echo "$input" | smtfmt
 ```
 
 Small expressions are printed inline; longer expressions are broken up and aligned.
+
+## Tests
+
+Run `pytest smtfmt.py`.

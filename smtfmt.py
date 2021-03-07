@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import sys
 from typing import Tuple
 
 ######################################################################
@@ -215,5 +216,9 @@ TESTDATA = (
     + "\n"
 )
 
-if __name__ == "__main__":
+def test_format_lisp():
     assert format_lisp(TESTDATA) == TESTDATA
+
+if __name__ == "__main__":
+    print(format_lisp(sys.stdin.read()), end="")
+
