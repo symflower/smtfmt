@@ -111,7 +111,7 @@ def atom():
     return f
 
 ######################################################################
-# Formatter & test (effectively copy-paste from @krobelus)
+# Formatter
 ######################################################################
 
 COLUMN_LIMIT = 80
@@ -174,6 +174,12 @@ def format_term_oneline(xs) -> Tuple[bool, str]:
         terms += [s]
     return True, "(" + " ".join(terms) + ")"
 
+if __name__ == "__main__":
+    print(format_lisp(sys.stdin.read()), end="")
+
+######################################################################
+# Tests
+######################################################################
 
 TESTDATA = (
     """
@@ -218,7 +224,3 @@ TESTDATA = (
 
 def test_format_lisp():
     assert format_lisp(TESTDATA) == TESTDATA
-
-if __name__ == "__main__":
-    print(format_lisp(sys.stdin.read()), end="")
-
