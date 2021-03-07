@@ -120,7 +120,7 @@ INDENT = " " * 2
 def format_lisp(input: str) -> str:
     parser = paragraph()
     paragraphs = re.split(r'\n{2,}', input)
-    return "\n".join(format_terms(parser(p)[2]) for p in paragraphs)
+    return "\n".join(format_terms(parser(p)[2]) for p in paragraphs if p.strip() != "")
 
 def format_terms(xs) -> str:
     return "".join(format_term(x, 0, False) + "\n" for x in xs)
@@ -224,3 +224,6 @@ TESTDATA = (
 
 def test_format_lisp():
     assert format_lisp(TESTDATA) == TESTDATA
+
+def test_trailing_paragraph():
+    assert format_lisp("()\n\n") == "()\n"
