@@ -255,6 +255,6 @@ def test_format_invalid():
     try:
         format_lisp("(")
     except FormattingException as e:
-        assert e.args == ("smtfmt: error: not formatting, leftover: (", )
+        assert e.args == ("smtfmt: error: not formatting, leftover: (",)
         return
     assert False, "expect exception on invalid input"
