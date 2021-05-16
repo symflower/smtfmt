@@ -66,7 +66,7 @@ def oneOrMore(parser):
 ######################################################################
 # Paragraph ::= (Comment | SExpr)+
 # SExpr     ::= '(' Expr* ')'
-# Expr      ::= Comment | SExpr | atom
+# Expr      ::= blankline | Comment | SExpr | atom
 
 def lparen():
     return regex(r"^\s*\(")
@@ -76,13 +76,19 @@ def rparen():
 
 def paragraph():
     def f(s: str):
-        parser = oneOrMore(choice(comment(), sexpr()))
+        parser = oneOrMore(choice(blankline(), comment(), sexpr()))
         return parser(s)
     return f
 
 def comment():
     def f(s: str):
         parser = regex(r"^\s*;.*", lambda x: [";", x.strip()[1:]])
+        return parser(s)
+    return f
+
+def blankline():
+    def f(s: str):
+        parser = regex(r"^(\s*?\n){2,}", lambda x: x.count("\n") - 2)
         return parser(s)
     return f
 
@@ -98,7 +104,7 @@ def sexpr():
 
 def expr():
     def f(s: str):
-        parser = choice(comment(), sexpr(), atom())
+        parser = choice(blankline(), comment(), sexpr(), atom())
         return parser(s)
     return f
 
@@ -122,27 +128,28 @@ class FormattingException(Exception):
 
 def format_lisp(input: str) -> str:
     parser = paragraph()
-    in_paragraphs = re.split(r"\n{2,}", input)
-    out_paragraphs = []
-    for p in in_paragraphs:
-        if p.strip() == "":
-            continue
-        succ, leftover, terms = parser(p)
-        if not succ or (leftover and not leftover.isspace()) or terms is None:
-            raise FormattingException("smtfmt: error: not formatting, leftover: " + leftover.strip())
-        out_paragraphs += [format_terms(terms)]
-    return "\n".join(out_paragraphs)
+    succ, leftover, terms = parser(input)
+    if not succ or (leftover and not leftover.isspace()) or terms is None:
+        raise FormattingException(
+            "smtfmt: error: not formatting, leftover: " + leftover.strip()
+        )
+    return format_terms(terms)
 
 def format_terms(xs) -> str:
     return "".join(format_term(x, 0, False) + "\n" for x in xs)
 
 def iscomment(xs) -> bool:
-    return len(xs) == 2 and xs[0] == ";"
+    return not isblankline(xs) and len(xs) == 2 and xs[0] == ";"
 
 def isatom(xs) -> bool:
     return isinstance(xs, str)
 
+def isblankline(xs) -> bool:
+    return isinstance(xs, int)
+
 def format_term(xs, level: int, first: bool) -> str:
+    if isblankline(xs):
+        return "\n" * xs
     # Insert comments at the current indentation level.
     if iscomment(xs):
         return "".join(xs)
@@ -168,13 +175,15 @@ def format_term(xs, level: int, first: bool) -> str:
     indented = ""
     first = True
     for line in s.splitlines(keepends=True):
-        if not first:
+        if not first and line != "\n":
             indented += " " * SPACES_PER_INDENT
         indented += line
         first = False
     return indented
 
 def format_term_oneline(xs) -> Tuple[bool, str]:
+    if isblankline(xs):
+        return False, ""
     if iscomment(xs):
         return False, ""
     if isatom(xs):
@@ -232,6 +241,8 @@ TESTDATA = (
     (Pointer
       true
       #x00000002
+
+      ;; Blank lines are preserved.
       (variant_node1 (Pointer true #x00000001 variant_leaf1)))))
 
 (declare-datatypes
@@ -251,13 +262,27 @@ def test_format_lisp():
     assert format_lisp(TESTDATA) == TESTDATA
 
 def test_trailing_paragraph():
-    assert format_lisp("()\n\n") == "()\n"
+    assert format_lisp("()\n\n") == "()\n\n"
 
 def test_trailing_comment():
     assert format_lisp("(1\n;comment\n)") == "(1\n  ;comment\n  )\n"
 
 def test_leading_comment():
     assert format_lisp("(\n;comment\n)") == "(\n  ;comment\n  )\n"
+
+def test_empty_line():
+    assert format_lisp("(1\n\n2)") == "(1\n\n  2)\n"
+
+def test_blank_line():
+    assert format_lisp("(1\n  \n2)") == "(1\n\n  2)\n"
+
+def test_empty_line_toplevel():
+    assert format_lisp("(1)\n\n(2)") == "(1)\n\n(2)\n"
+    assert format_lisp("(1)\n\n\n(2)") == "(1)\n\n\n(2)\n"
+
+def test_empty_line_comment():
+    assert format_lisp("(1)\n\n; comment\n(2)") == "(1)\n\n; comment\n(2)\n"
+    assert format_lisp("(1\n\n; comment\n\n2)") == "(1\n\n  ; comment\n\n  2)\n"
 
 def test_format_invalid():
     try:
