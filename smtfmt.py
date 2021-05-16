@@ -200,7 +200,7 @@ def usage():
     print("usage: smtfmt < input.smt")
     sys.exit(1)
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) > 1:
         usage()
     input = sys.stdin.read()
@@ -210,6 +210,9 @@ if __name__ == "__main__":
         print(input)
         print(e, file=sys.stderr)
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
 
 ######################################################################
 # Tests
