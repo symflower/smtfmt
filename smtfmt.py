@@ -136,7 +136,7 @@ def format_lisp(input: str) -> str:
     return format_terms(terms)
 
 def format_terms(xs) -> str:
-    return "".join(format_term(x, 0, False) + "\n" for x in xs)
+    return "".join(format_term(x, False) + "\n" for x in xs)
 
 def iscomment(xs) -> bool:
     return not isblankline(xs) and len(xs) == 2 and xs[0] == ";"
@@ -147,7 +147,7 @@ def isatom(xs) -> bool:
 def isblankline(xs) -> bool:
     return isinstance(xs, int)
 
-def format_term(xs, level: int, first: bool) -> str:
+def format_term(xs, first: bool) -> str:
     if isblankline(xs):
         return "\n" * xs
     # Insert comments at the current indentation level.
@@ -168,7 +168,7 @@ def format_term(xs, level: int, first: bool) -> str:
         x = xs[i]
         if i == 0 and iscomment(x):
             s += "\n"
-        s += format_term(x, level + 1, i == 0)
+        s += format_term(x, i == 0)
         if i != len(xs) - 1 or iscomment(x):
             s += "\n"
     s += ")"
