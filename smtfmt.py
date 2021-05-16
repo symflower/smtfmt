@@ -159,6 +159,8 @@ def format_term(xs, level: int, first: bool) -> str:
     # General lists with line breaks after each element.
     for i in range(len(xs)):
         x = xs[i]
+        if i == 0 and iscomment(x):
+            s += "\n"
         s += format_term(x, level + 1, i == 0)
         if i != len(xs) - 1 or iscomment(x):
             s += "\n"
@@ -253,6 +255,9 @@ def test_trailing_paragraph():
 
 def test_trailing_comment():
     assert format_lisp("(1\n;comment\n)") == "(1\n  ;comment\n  )\n"
+
+def test_leading_comment():
+    assert format_lisp("(\n;comment\n)") == "(\n  ;comment\n  )\n"
 
 def test_format_invalid():
     try:
