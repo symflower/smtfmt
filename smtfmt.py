@@ -160,7 +160,7 @@ def format_term(xs, level: int, first: bool) -> str:
     for i in range(len(xs)):
         x = xs[i]
         s += format_term(x, level + 1, i == 0)
-        if i != len(xs) - 1:
+        if i != len(xs) - 1 or iscomment(x):
             s += "\n"
     s += ")"
     indented = ""
@@ -250,6 +250,9 @@ def test_format_lisp():
 
 def test_trailing_paragraph():
     assert format_lisp("()\n\n") == "()\n"
+
+def test_trailing_comment():
+    assert format_lisp("(1\n;comment\n)") == "(1\n  ;comment\n  )\n"
 
 def test_format_invalid():
     try:
