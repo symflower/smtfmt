@@ -6,7 +6,7 @@ It is designed to pretty-print [SMT-LIB](http://smtlib.cs.uiowa.edu/language.sht
 ## Installation
 
 ```sh
-$ git clone https://github.com/symflower/smtfmt
+$ git clone https://github.com/symflower/smtfmt && cd smtfmt
 $ ln -s $PWD/smtfmt ~/bin
 ```
 
@@ -23,7 +23,7 @@ $ echo "$input" | smtfmt
       (impl (< ?x ?y) (:exists (?z Real) (:and (< ?x ?z) (< ?z ?y)))))))
 ```
 
-Small expressions are printed inline; longer expressions are broken up and aligned.
+Small expressions are printed inline. Longer expressions are broken up and aligned.
 
 ## Tests
 
