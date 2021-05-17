@@ -64,9 +64,9 @@ def oneOrMore(parser):
 ######################################################################
 # Specific parser builders
 ######################################################################
-# Paragraph ::= (Comment | SExpr)+
-# SExpr     ::= '(' Expr* ')'
-# Expr      ::= blankline | Comment | SExpr | atom
+# Program ::= (blankline | Comment | SExpr)+
+# SExpr   ::= '(' Expr* ')'
+# Expr    ::= blankline | Comment | SExpr | atom
 
 def lparen():
     return regex(r"^\s*\(")
@@ -74,7 +74,7 @@ def lparen():
 def rparen():
     return regex(r"^\s*\)")
 
-def paragraph():
+def program():
     def f(s: str):
         parser = oneOrMore(choice(blankline(), comment(), sexpr()))
         return parser(s)
@@ -127,7 +127,7 @@ class FormattingException(Exception):
     pass
 
 def format_lisp(input: str) -> str:
-    parser = paragraph()
+    parser = program()
     succ, leftover, terms = parser(input)
     if not succ or (leftover and not leftover.isspace()) or terms is None:
         raise FormattingException(
