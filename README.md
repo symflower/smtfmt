@@ -1,7 +1,7 @@
 # smtfmt
 
-This is a fun little program to format Lisp programs.
-It is designed to pretty-print [SMT-LIB](http://smtlib.cs.uiowa.edu/language.shtml) code.
+This is a fun little program that formats
+[SMT-LIB](http://smtlib.cs.uiowa.edu/language.shtml) programs.
 
 ## Installation
 

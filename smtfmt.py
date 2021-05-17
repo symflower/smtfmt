@@ -110,10 +110,15 @@ def expr():
 
 def atom():
     def f(s: str):
-        quoted = regex(r'^\s*".*"', lambda x: x.strip())
-        # identifier = all but whitespace and ( or )
-        id = regex(r"^\s*[^\s\(\)]+", lambda x: x.strip())
-        return choice(quoted, id)(s)
+        numeral = regex(r'^\s*(?:0|[1-9][0-9]*)', lambda x: x.lstrip())
+        decimal = regex(r'^\s*(?:0|[1-9][0-9]*)\.[0-9]+', lambda x: x.lstrip())
+        hexadecimal = regex(r'^\s*#x[0-9a-fA-F]+', lambda x: x.lstrip())
+        binary = regex(r'^\s*#b[0-1]+', lambda x: x.lstrip())
+        string = regex(r'^\s*"(?:""|[^"])*"', lambda x: x.lstrip())
+        # This includes "keyword", which is just ":" followed by a "simple_symbol".
+        simple_symbol = regex(r'^\s*(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+', lambda x: x.lstrip())
+        quoted_symbol = regex(r'^\s*\|[^|\\]*\|', lambda x: x.lstrip())
+        return choice(numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol)(s)
     return f
 
 ######################################################################
@@ -222,7 +227,7 @@ TESTDATA = (
     """
 (simple x)
 
-(list (list (fun) (number 0.0.0.0:5900) atom))
+(list (list (fun) (number 0 .0.0.0 :5900) atom))
 
 ;; comment
 
@@ -286,6 +291,9 @@ def test_empty_line_toplevel():
 def test_empty_line_comment():
     assert format_lisp("(1)\n\n; comment\n(2)") == "(1)\n\n; comment\n(2)\n"
     assert format_lisp("(1\n\n; comment\n\n2)") == "(1\n\n  ; comment\n\n  2)\n"
+
+def test_quoted_symbol():
+    assert format_lisp("(| single  symbol |)") == "(| single  symbol |)\n"
 
 def test_format_invalid():
     try:
