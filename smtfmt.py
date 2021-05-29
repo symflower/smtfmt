@@ -110,16 +110,16 @@ def expr():
 
 def atom():
     def f(s: str):
-        numeral = regex(r"^\s*(?:0|[1-9][0-9]*)", lambda x: x.lstrip())
-        decimal = regex(r"^\s*(?:0|[1-9][0-9]*)\.[0-9]+", lambda x: x.lstrip())
-        hexadecimal = regex(r"^\s*#x[0-9a-fA-F]+", lambda x: x.lstrip())
-        binary = regex(r"^\s*#b[0-1]+", lambda x: x.lstrip())
-        string = regex(r'^\s*"(?:""|[^"])*"', lambda x: x.lstrip())
+        def parse_atom(pattern):
+            return regex(r"^(\s*" + pattern + r")", lambda x: x.lstrip())
+        numeral = parse_atom(r"(?:0|[1-9][0-9]*)")
+        decimal = parse_atom(r"(?:0|[1-9][0-9]*)\.[0-9]+")
+        hexadecimal = parse_atom(r"#x[0-9a-fA-F]+")
+        binary = parse_atom(r"#b[0-1]+")
+        string = parse_atom(r'"(?:""|[^"])*"')
         # This includes "keyword", which is just ":" followed by a "simple_symbol".
-        simple_symbol = regex(
-            r"^\s*(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+", lambda x: x.lstrip()
-        )
-        quoted_symbol = regex(r"^\s*\|[^|\\]*\|", lambda x: x.lstrip())
+        simple_symbol = parse_atom(r"(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+")
+        quoted_symbol = parse_atom(r"\|[^|\\]*\|")
         return choice(
             numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol
         )(s)
