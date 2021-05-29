@@ -27,7 +27,7 @@ def seq(*parsers):
             succ, cur_s, value = parser(cur_s)
             if not succ:
                 return False, s, None
-            if value:
+            if value is not None:
                 values.append(value)
         return True, cur_s, values
     return f
@@ -40,6 +40,12 @@ def choice(*parsers):
             if succ:
                 return True, cur_s, value
         return False, s, None
+    return f
+
+def zeroOrOne(parser):
+    def f(s: str):
+        _succ, cur_s, value = parser(s)
+        return True, cur_s, value
     return f
 
 def zeroOrMore(parser):
@@ -82,13 +88,15 @@ def program():
 
 def comment():
     def f(s: str):
-        parser = regex(r"^\s*;.*", lambda m: [";", m.group(0).strip()[1:]])
-        return parser(s)
+        succ, cur_s, value = seq(regex(r"^\s*"), raw_comment())(s)
+        if succ:
+            return True, cur_s, value[0]
+        return False, s, None
     return f
 
 def raw_comment():
     def f(s: str):
-        parser = regex(r"^([ \t]*;.*)?", lambda m: m.group(0) or "")
+        parser = regex(r"^[ \t]*;.*", lambda m: m.group(0))
         return parser(s)
     return f
 
@@ -100,7 +108,7 @@ def blankline():
 
 def sexpr():
     def f(s: str):
-        parser = seq(lparen(), zeroOrMore(expr()), rparen(), raw_comment())
+        parser = seq(lparen(), zeroOrMore(expr()), rparen(), zeroOrOne(raw_comment()))
         return parser(s)
     return f
 
@@ -125,7 +133,7 @@ def atom():
         any_atom = choice(
             numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol
         )
-        return seq(any_atom, raw_comment())(s)
+        return seq(any_atom, zeroOrOne(raw_comment()))(s)
     return f
 
 ######################################################################
@@ -151,7 +159,7 @@ def format_terms(xs) -> str:
     return "".join(format_term(x, False) + "\n" for x in xs)
 
 def iscomment(xs) -> bool:
-    return not isblankline(xs) and len(xs) == 2 and xs[0] == ";"
+    return isinstance(xs, str)
 
 def isatom(xs) -> bool:
     return isinstance(xs, list) and len(xs) in (1, 2) and isinstance(xs[0], str)
@@ -178,7 +186,7 @@ def format_term(xs, first: bool) -> str:
         return "\n" * xs
     # Insert comments at the current indentation level.
     if iscomment(xs):
-        return "".join(xs)
+        return xs
     # Atoms are easy, always print them as-is.
     if isatom(xs):
         return format_atom(xs)
