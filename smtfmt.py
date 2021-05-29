@@ -110,15 +110,19 @@ def expr():
 
 def atom():
     def f(s: str):
-        numeral = regex(r'^\s*(?:0|[1-9][0-9]*)', lambda x: x.lstrip())
-        decimal = regex(r'^\s*(?:0|[1-9][0-9]*)\.[0-9]+', lambda x: x.lstrip())
-        hexadecimal = regex(r'^\s*#x[0-9a-fA-F]+', lambda x: x.lstrip())
-        binary = regex(r'^\s*#b[0-1]+', lambda x: x.lstrip())
+        numeral = regex(r"^\s*(?:0|[1-9][0-9]*)", lambda x: x.lstrip())
+        decimal = regex(r"^\s*(?:0|[1-9][0-9]*)\.[0-9]+", lambda x: x.lstrip())
+        hexadecimal = regex(r"^\s*#x[0-9a-fA-F]+", lambda x: x.lstrip())
+        binary = regex(r"^\s*#b[0-1]+", lambda x: x.lstrip())
         string = regex(r'^\s*"(?:""|[^"])*"', lambda x: x.lstrip())
         # This includes "keyword", which is just ":" followed by a "simple_symbol".
-        simple_symbol = regex(r'^\s*(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+', lambda x: x.lstrip())
-        quoted_symbol = regex(r'^\s*\|[^|\\]*\|', lambda x: x.lstrip())
-        return choice(numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol)(s)
+        simple_symbol = regex(
+            r"^\s*(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+", lambda x: x.lstrip()
+        )
+        quoted_symbol = regex(r"^\s*\|[^|\\]*\|", lambda x: x.lstrip())
+        return choice(
+            numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol
+        )(s)
     return f
 
 ######################################################################
