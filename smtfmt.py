@@ -10,11 +10,11 @@ from typing import Tuple
 # Here, a parser is a function of the following form:
 # f(input: str) -> (success: bool, output: str, value)
 
-def regex(pat: str, func=lambda x: None):
+def regex(pat: str, func=lambda m: None):
     def f(s: str):
         m = re.compile(pat).match(s)
         if m:
-            return True, s[m.end(0) :], func(s[: m.end(0)])
+            return True, s[m.end(0) :], func(m)
         else:
             return False, s, None
     return f
@@ -82,13 +82,13 @@ def program():
 
 def comment():
     def f(s: str):
-        parser = regex(r"^\s*;.*", lambda x: [";", x.strip()[1:]])
+        parser = regex(r"^\s*;.*", lambda m: [";", m.group(0).strip()[1:]])
         return parser(s)
     return f
 
 def blankline():
     def f(s: str):
-        parser = regex(r"^(\s*?\n){2,}", lambda x: x.count("\n") - 2)
+        parser = regex(r"^(\s*?\n){2,}", lambda m: m.group(0).count("\n") - 2)
         return parser(s)
     return f
 
@@ -111,7 +111,7 @@ def expr():
 def atom():
     def f(s: str):
         def parse_atom(pattern):
-            return regex(r"^(\s*" + pattern + r")", lambda x: x.lstrip())
+            return regex(r"^\s*(" + pattern + r")", lambda m: m.group(1))
         numeral = parse_atom(r"(?:0|[1-9][0-9]*)")
         decimal = parse_atom(r"(?:0|[1-9][0-9]*)\.[0-9]+")
         hexadecimal = parse_atom(r"#x[0-9a-fA-F]+")
