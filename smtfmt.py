@@ -86,6 +86,12 @@ def comment():
         return parser(s)
     return f
 
+def raw_comment():
+    def f(s: str):
+        parser = regex(r"^([ \t]*;.*)?", lambda m: m.group(0) or "")
+        return parser(s)
+    return f
+
 def blankline():
     def f(s: str):
         parser = regex(r"^(\s*?\n){2,}", lambda m: m.group(0).count("\n") - 2)
@@ -94,12 +100,8 @@ def blankline():
 
 def sexpr():
     def f(s: str):
-        parser = seq(lparen(), zeroOrMore(expr()), rparen())
-        succ, cur_s, value = parser(s)
-        # Do not wrap Expr* value in another list
-        if succ and value:
-            return succ, cur_s, value[0]
-        return succ, cur_s, value
+        parser = seq(lparen(), zeroOrMore(expr()), rparen(), raw_comment())
+        return parser(s)
     return f
 
 def expr():
@@ -120,9 +122,10 @@ def atom():
         # This includes "keyword", which is just ":" followed by a "simple_symbol".
         simple_symbol = parse_atom(r"(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+")
         quoted_symbol = parse_atom(r"\|[^|\\]*\|")
-        return choice(
+        any_atom = choice(
             numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol
-        )(s)
+        )
+        return seq(any_atom, raw_comment())(s)
     return f
 
 ######################################################################
@@ -151,10 +154,24 @@ def iscomment(xs) -> bool:
     return not isblankline(xs) and len(xs) == 2 and xs[0] == ";"
 
 def isatom(xs) -> bool:
-    return isinstance(xs, str)
+    return isinstance(xs, list) and len(xs) in (1, 2) and isinstance(xs[0], str)
+
+def issexpr(xs) -> bool:
+    return isinstance(xs, list) and (len(xs) == 0 or isinstance(xs[0], list))
 
 def isblankline(xs) -> bool:
     return isinstance(xs, int)
+
+def format_atom(xs):
+    return "".join(xs)
+
+def decode_attached_comment(xs) -> tuple[list, str]:
+    if len(xs) == 0:
+        return [], ""
+    attached_comment = ""
+    if len(xs) == 2:
+        attached_comment = xs[1]
+    return xs[0], attached_comment
 
 def format_term(xs, first: bool) -> str:
     if isblankline(xs):
@@ -164,10 +181,11 @@ def format_term(xs, first: bool) -> str:
         return "".join(xs)
     # Atoms are easy, always print them as-is.
     if isatom(xs):
-        return xs
-    ok, oneline = format_term_oneline(xs)
+        return format_atom(xs)
+    xs, attached_comment = decode_attached_comment(xs)
+    ok, oneline = format_term_oneline([xs])
     if ok and len(oneline) < SMALL_EXPRESSION_MAX_LENGTH:  # Small terms on one line
-        return oneline
+        return oneline + attached_comment
     # Long expression, break lines and align subexpressions on the same level.
     s = "("
     if not iscomment(xs[0]) and not isatom(xs[0]):
@@ -178,9 +196,15 @@ def format_term(xs, first: bool) -> str:
         if i == 0 and iscomment(x):
             s += "\n"
         s += format_term(x, i == 0)
-        if i != len(xs) - 1 or iscomment(x):
+        if (
+            i != len(xs) - 1
+            or iscomment(x)
+            or ((isatom(x) or issexpr(x)) and len(x) == 2)
+        ):
             s += "\n"
     s += ")"
+    if attached_comment:
+        s += attached_comment
     indented = ""
     first = True
     for line in s.splitlines(keepends=True):
@@ -195,10 +219,13 @@ def format_term_oneline(xs) -> Tuple[bool, str]:
         return False, ""
     if iscomment(xs):
         return False, ""
+    xs0, attached_comment = decode_attached_comment(xs)
     if isatom(xs):
-        return True, xs
+        return not attached_comment, format_atom(xs)
+    if attached_comment:
+        return False, ""
     terms = []
-    for x in xs:
+    for x in xs0:
         ok, s = format_term_oneline(x)
         if not ok:
             return False, ""
@@ -278,6 +305,14 @@ def test_trailing_paragraph():
 
 def test_trailing_comment():
     assert format_lisp("(1\n;comment\n)") == "(1\n  ;comment\n  )\n"
+
+def test_attached_comment():
+    assert format_lisp("(1 ; comment\n)") == "(1 ; comment\n  )\n"
+    assert format_lisp("(1 ; comment\n2)") == "(1 ; comment\n  2)\n"
+    assert format_lisp("(1  ;   comment\n2)") == "(1  ;   comment\n  2)\n"
+
+    assert format_lisp("(1) ; comment\n(2)") == "(1) ; comment\n(2)\n"
+    assert format_lisp("(1) ; comment\n\n(2)") == "(1) ; comment\n\n(2)\n"
 
 def test_leading_comment():
     assert format_lisp("(\n;comment\n)") == "(\n  ;comment\n  )\n"
