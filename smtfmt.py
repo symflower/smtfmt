@@ -128,7 +128,7 @@ def atom():
         binary = parse_atom(r"#b[0-1]+")
         string = parse_atom(r'"(?:""|[^"])*"')
         # This includes "keyword", which is just ":" followed by a "simple_symbol".
-        simple_symbol = parse_atom(r"(?![0-9]):?[+\-*=%?!.$_~&^<>@0-9a-zA-Z]+")
+        simple_symbol = parse_atom(r"(?![0-9]):?[+\-*=%/?!.$_~&^<>@0-9a-zA-Z]+")
         quoted_symbol = parse_atom(r"\|[^|\\]*\|")
         any_atom = choice(
             numeral, decimal, hexadecimal, binary, string, simple_symbol, quoted_symbol
