@@ -173,7 +173,7 @@ def isblankline(xs) -> bool:
 def format_atom(xs):
     return "".join(xs)
 
-def decode_attached_comment(xs) -> tuple[list, str]:
+def decode_attached_comment(xs) -> Tuple[list, str]:
     if len(xs) == 0:
         return [], ""
     attached_comment = ""
